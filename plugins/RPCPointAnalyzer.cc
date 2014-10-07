@@ -229,6 +229,7 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     iEvent.getByLabel(rpcCSCPointsLabel,CSCPoints); 
 		    	 
 //********************	DT Points	********************	    	 
+//********************	Barrel		********************	    	 
 		   	
 	if(DTPoints.isValid() && DTPoints->begin()!=DTPoints->end()){ //No Empty Predictions
 	RPCRecHitCollection::const_iterator rpcDTPoint;
@@ -240,7 +241,9 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 		double LocalDTPoint_x_error = PointExtrapolatedRPCFrameError.xx();
 		RPCDetId  rpcId = rpcDTPoint->rpcId();
 
-		std::cout<<"PointExtrapolatedRPCFrameError: "<<PointExtrapolatedRPCFrame<<" Error: "<<LocalDTPoint_x_error<<std::endl;
+		std::cout<<"PointExtrapolatedRPCFrame: "<<PointExtrapolatedRPCFrame<<" Error: "<<LocalDTPoint_x_error<<std::endl;
+		
+		// this change
 		
 		typedef std::pair<RPCRecHitCollection::const_iterator, RPCRecHitCollection::const_iterator> rangeRecHits;
 		rangeRecHits recHitCollection =  RecHits->get(rpcId);
@@ -272,7 +275,8 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 			//const BoundPlane & RPCSurface = rollasociated->surface(); 
   		   // GlobalPoint RPCGlobalPoint = RPCSurface.toGlobal(recHitPos);
 			
-			std::cout<<"PointExtrapolatedRPCFrame: "<<PointExtrapolatedRPCFrame<<"RecHitPos: "<<recHitPos<<std::endl;
+			std::cout<<"PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<"RecHitPos: "<<LocalRecHit_x<<std::endl;
+			std::cout<<"PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<std::endl;
 			std::cout<<"Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
 			
 			std::cout<<" region "<<region<<" ring "<<ring<<" station "<<station<<" sector "<<sector<<" layer "<<layer<<std::endl;
@@ -282,10 +286,11 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 			
 			// Station 1 Ring 0
 			
-			if( region == 0 && station ==1 && ring == 0 ){
+		//	if( region == 0 && station ==1 && ring == 1 ){
 			
-					if( sector ==1 && layer == 1){
-						std::cout<<"Barrel Station 1 Ring 0 Sector 1 Layer 1"<<std::endl;
+					if(  layer == 1){
+						std::cout<<"Layer 1 "<<std::endl;
+						std::cout<<"Barrel Station 1 Ring 1 Layer 1"<<std::endl;
 						std::cout<<" RecHit Pos "<<LocalRecHit_x<<" Error: "<<LocalRecHit_x_error<<std::endl;
 						std::cout<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<error <<std::endl;
 						MB1_R0_Sec1_Lay1_Local_RecHits->Fill(LocalRecHit_x);
@@ -323,7 +328,7 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 					}
 				
 				
-				} 			// Station 1 Ring 0
+				//} 			// Station 1 Ring 0
 			
 			}
 
@@ -336,7 +341,13 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 		  
 //********************	DT Points	********************	    	 
 
-	
+
+
+//********************	CSC Points	********************	 
+//********************	EndCap	********************	    	    	 
+
+
+//********************	CSC Points	********************	 
 	
 			//const RectangularStripTopology* top_= dynamic_cast<const RectangularStripTopology*> (&(rollasociated->topology()));
 			//LocalPoint xmin = top_->localPosition(0.);
