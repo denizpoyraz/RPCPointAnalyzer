@@ -219,14 +219,46 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 {
    using namespace edm;
 
-	edm::Handle<RPCRecHitCollection> RecHits; 
-    iEvent.getByLabel(rpcRecHitLabel,RecHits);
+	edm::Handle<RPCRecHitCollection> rpcRecHits; 
+    iEvent.getByLabel(rpcRecHitLabel,rpcRecHits);
    
     edm::Handle<RPCRecHitCollection> DTPoints;
     iEvent.getByLabel(rpcDTPointsLabel,DTPoints);   
     
     edm::Handle<RPCRecHitCollection> CSCPoints;
     iEvent.getByLabel(rpcCSCPointsLabel,CSCPoints); 
+    
+    
+  //********************	RPC RecHit Points	********************	    	 
+	RPCRecHitCollection::const_iterator recHit;
+	for(recHit = rpcRecHits->begin(); recHit != rpcRecHits->end(); recHit++){ //Filling DQMOccupancies
+	 	 
+		//int cls = recHit->clusterSize();
+		//int firststrip = recHit->firstClusterStrip();
+		//int bx = recHit->BunchX();
+		RPCDetId rpcId = recHit->rpcId();
+		LocalPoint rpc_position=recHit->localPosition();
+		LocalError rpc_position_error=recHit->localPositionError();
+		
+		int region = rpcId.region();
+		if(region == 0){
+		const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
+		const RectangularStripTopology* top_= dynamic_cast<const RectangularStripTopology*> (&(rollasociated->topology()));
+		float stripw = top_->pitch();
+		//float stripl = top_->stripLength();
+		//float rpc_error_x = rpc_position_error.xx();
+		float error_cal = stripw * stripw  /sqrt(12);
+		const float stripp = rollasociated->strip(LocalPoint(rpc_position.x(),rpc_position.y(),0.));
+		LocalError RollError = rollasociated->localError(stripp);
+		
+
+		std::cout<<" RPC Id: "<<rpcId<<std::endl;
+		std::cout<<" RPC Position Error: "<<rpc_position_error<<std::endl;
+		std::cout<<" RollError: "<<RollError<<" Error Calculated: "<<error_cal<<std::endl;
+		}
+			
+	}
+    
 		    	 
 //********************	DT Points	********************	    	 
 //********************	Barrel		********************	    	 
@@ -241,12 +273,13 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 		double LocalDTPoint_x_error = PointExtrapolatedRPCFrameError.xx();
 		RPCDetId  rpcId = rpcDTPoint->rpcId();
 
-		std::cout<<"PointExtrapolatedRPCFrame: "<<PointExtrapolatedRPCFrame<<" Error: "<<LocalDTPoint_x_error<<std::endl;
+		std::cout<<"RPC Id: "<<rpcId<<" PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" Error: "<<LocalDTPoint_x_error<<std::endl;
+		
 		
 		// this change
 		
 		typedef std::pair<RPCRecHitCollection::const_iterator, RPCRecHitCollection::const_iterator> rangeRecHits;
-		rangeRecHits recHitCollection =  RecHits->get(rpcId);
+		rangeRecHits recHitCollection = rpcRecHits->get(rpcId);
 		RPCRecHitCollection::const_iterator dtrecHit;
 
 			for(dtrecHit = recHitCollection.first; dtrecHit != recHitCollection.second ; dtrecHit++) {
@@ -255,6 +288,9 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 			LocalError recHitPosError=dtrecHit->localPositionError();
 			double LocalRecHit_x = recHitPos.x();
 			double LocalRecHit_x_error = recHitPosError.xx();
+			double LocalRecHit_y = recHitPos.y();
+			double LocalRecHit_y_error = recHitPosError.yy();
+			double LocalRecHit_xy_error = recHitPosError.xy();
 			
 			double Local_diff_x = fabs(LocalRecHit_x - LocalDTPoint_x );
 			int region = rpcId.region();
@@ -266,20 +302,24 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 			const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
 			const RectangularStripTopology* top_= dynamic_cast<const RectangularStripTopology*> (&(rollasociated->topology()));
 			float stripw = top_->pitch();
-			float cluSize = dtrecHit->clusterSize();
-			float error = cluSize * stripw / sqrt(12);
+			//float cluSize = dtrecHit->clusterSize();
+			float error = stripw * stripw / sqrt(12);
+			const float stripp = rollasociated->strip(LocalPoint(rpc_position.x(),rpc_position.y(),0.));
+			LocalError RollError = rollasociated->localError(stripp);
 
 			
 			
 			//const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
 			//const BoundPlane & RPCSurface = rollasociated->surface(); 
   		   // GlobalPoint RPCGlobalPoint = RPCSurface.toGlobal(recHitPos);
+  		   
+  		   std::cout<<" RPC Related Local Points"<<" LocalRecHit_x: "<<LocalRecHit_x<<" LocalRecHit_x_error: "<<LocalRecHit_x_error<<" LocalRecHit_y: "<<LocalRecHit_y<<" LocalRecHit_y_error: "<<LocalRecHit_y_error<<" LocalRecHit_xy_error: "<<LocalRecHit_xy_error<<std::endl;
 			
-			std::cout<<"PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<"RecHitPos: "<<LocalRecHit_x<<std::endl;
-			std::cout<<"PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<std::endl;
-			std::cout<<"Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
-			
-			std::cout<<" region "<<region<<" ring "<<ring<<" station "<<station<<" sector "<<sector<<" layer "<<layer<<std::endl;
+			std::cout<<"DT PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
+			//std::cout<<"DT RPC Id: "<<rpcId<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
+			std::cout<<"DT PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<std::endl;
+			std::cout<<"DT Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
+			std::cout<<"DT region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
 			
 			//Barrel
 			
@@ -289,10 +329,9 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 		//	if( region == 0 && station ==1 && ring == 1 ){
 			
 					if(  layer == 1){
-						std::cout<<"Layer 1 "<<std::endl;
-						std::cout<<"Barrel Station 1 Ring 1 Layer 1"<<std::endl;
-						std::cout<<" RecHit Pos "<<LocalRecHit_x<<" Error: "<<LocalRecHit_x_error<<std::endl;
-						std::cout<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<error <<std::endl;
+						//std::cout<<"Layer 1 "<<region<<" ring "<<ring<<" station "<<station<<" sector "<<sector<<" layer "<<layer<<std::endl;
+						//std::cout<<"RecHit Pos "<<LocalRecHit_x<<" Error: "<<LocalRecHit_x_error<<std::endl;
+						//std::cout<<"Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
 						MB1_R0_Sec1_Lay1_Local_RecHits->Fill(LocalRecHit_x);
 						MB1_R0_Sec1_Lay1_Local_RecHits_Error->Fill(LocalRecHit_x_error);
 						MB1_R0_Sec1_Lay1_Local_DTPoints->Fill(LocalDTPoint_x);
@@ -301,9 +340,9 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 						}
 						
 					if( sector ==1 && layer == 2){
-						std::cout<<"Barrel Station 1 Ring 0 Sector 1 Layer 2"<<std::endl;
-						std::cout<<" RecHit Pos "<<LocalRecHit_x<<" Error: "<<LocalRecHit_x_error<<std::endl;
-						std::cout<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<error <<std::endl;
+						//std::cout<<"Barrel Station 1 Ring 0 Sector 1 Layer 2"<<std::endl;
+						//std::cout<<" RecHit Pos "<<LocalRecHit_x<<" Error: "<<LocalRecHit_x_error<<std::endl;
+						//std::cout<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<error <<std::endl;
 						MB1_R0_Sec1_Lay2_Local_RecHits->Fill(LocalRecHit_x);
 						MB1_R0_Sec1_Lay2_Local_RecHits_Error->Fill(LocalRecHit_x_error);
 						MB1_R0_Sec1_Lay2_Local_DTPoints->Fill(LocalDTPoint_x);
@@ -339,12 +378,50 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 	
 	
 		  
-//********************	DT Points	********************	    	 
+
 
 
 
 //********************	CSC Points	********************	 
 //********************	EndCap	********************	    	    	 
+
+  if(CSCPoints.isValid()) if(CSCPoints->begin()!=CSCPoints->end()){//No Empty Predictions   CSC If
+		RPCRecHitCollection::const_iterator rpcCSCPoint;
+		
+		for(rpcCSCPoint = CSCPoints->begin(); rpcCSCPoint != CSCPoints->end(); rpcCSCPoint++){	//CSC Points
+				LocalPoint PointExtrapolatedRPCFrame = rpcCSCPoint->localPosition();
+				LocalError PointExtrapolatedRPCFrameError = rpcCSCPoint->localPositionError();
+				double LocalCSCPoint_x = PointExtrapolatedRPCFrame.x();
+				double LocalCSCPoint_x_error = PointExtrapolatedRPCFrameError.xx();
+				std::cout<<"CSC Part: "<<std::endl;
+				std::cout<<"CSCPointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" CSC Error: "<<LocalCSCPoint_x_error<<std::endl;
+ 				
+ 				const RPCRoll * rollasociated = rpcGeo->roll(rpcId);
+      			const TrapezoidalStripTopology* top_=dynamic_cast<const TrapezoidalStripTopology*>(&(rollasociated->topology()));
+		        LocalPoint xmin = top_->localPosition(0.);
+		        
+		        std::cout<<"CSC PointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
+			//std::cout<<"DT RPC Id: "<<rpcId<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
+			std::cout<<"DT PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<std::endl;
+			std::cout<<"DT Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
+			std::cout<<"DT region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
+
+		
+		
+		
+		
+		}//CSC Points
+
+
+
+
+
+
+
+
+}//CSC If
+
+
 
 
 //********************	CSC Points	********************	 
