@@ -273,7 +273,7 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 		double LocalDTPoint_x_error = PointExtrapolatedRPCFrameError.xx();
 		RPCDetId  rpcId = rpcDTPoint->rpcId();
 
-		std::cout<<"RPC Id: "<<rpcId<<" PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" Error: "<<LocalDTPoint_x_error<<std::endl;
+		//std::cout<<"RPC Id: "<<rpcId<<" PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" Error: "<<LocalDTPoint_x_error<<std::endl;
 		
 		
 		// this change
@@ -293,33 +293,24 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 			double LocalRecHit_xy_error = recHitPosError.xy();
 			
 			double Local_diff_x = fabs(LocalRecHit_x - LocalDTPoint_x );
-			int region = rpcId.region();
-			int ring = rpcId.ring();
-			int station = rpcId.station();
 			int layer = rpcId.layer();
 			int sector = rpcId.sector();
 			
 			const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
 			const RectangularStripTopology* top_= dynamic_cast<const RectangularStripTopology*> (&(rollasociated->topology()));
 			float stripw = top_->pitch();
-			//float cluSize = dtrecHit->clusterSize();
 			float error = stripw * stripw / sqrt(12);
-			const float stripp = rollasociated->strip(LocalPoint(rpc_position.x(),rpc_position.y(),0.));
+			const float stripp = rollasociated->strip(LocalPoint(LocalDTPoint_x,PointExtrapolatedRPCFrame.y(),0.));
 			LocalError RollError = rollasociated->localError(stripp);
 
-			
-			
-			//const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
-			//const BoundPlane & RPCSurface = rollasociated->surface(); 
-  		   // GlobalPoint RPCGlobalPoint = RPCSurface.toGlobal(recHitPos);
-  		   
+		   std::cout<<"RPC Id: "<<rpcId<<" PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" PointExtrapolatedRPCFrame Error: "<<LocalDTPoint_x_error<<std::endl;
   		   std::cout<<" RPC Related Local Points"<<" LocalRecHit_x: "<<LocalRecHit_x<<" LocalRecHit_x_error: "<<LocalRecHit_x_error<<" LocalRecHit_y: "<<LocalRecHit_y<<" LocalRecHit_y_error: "<<LocalRecHit_y_error<<" LocalRecHit_xy_error: "<<LocalRecHit_xy_error<<std::endl;
 			
-			std::cout<<"DT PointExtrapolatedRPCFrame: "<<LocalDTPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
+
 			//std::cout<<"DT RPC Id: "<<rpcId<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
-			std::cout<<"DT PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<std::endl;
+			std::cout<<"DT PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<" RollError: "<<RollError<<std::endl;
 			std::cout<<"DT Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
-			std::cout<<"DT region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
+			//std::cout<<"DT region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
 			
 			//Barrel
 			
@@ -393,58 +384,71 @@ RPCPointAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 				LocalError PointExtrapolatedRPCFrameError = rpcCSCPoint->localPositionError();
 				double LocalCSCPoint_x = PointExtrapolatedRPCFrame.x();
 				double LocalCSCPoint_x_error = PointExtrapolatedRPCFrameError.xx();
+				RPCDetId  rpcId = rpcCSCPoint->rpcId();
+				
 				std::cout<<"CSC Part: "<<std::endl;
 				std::cout<<"CSCPointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" CSC Error: "<<LocalCSCPoint_x_error<<std::endl;
  				
- 				const RPCRoll * rollasociated = rpcGeo->roll(rpcId);
-      			const TrapezoidalStripTopology* top_=dynamic_cast<const TrapezoidalStripTopology*>(&(rollasociated->topology()));
-		        LocalPoint xmin = top_->localPosition(0.);
+ 				//const RPCRoll * rollasociated = rpcGeom->roll(rpcId);
+      			//const TrapezoidalStripTopology* top_=dynamic_cast<const TrapezoidalStripTopology*>(&(rollasociated->topology()));
+		        //LocalPoint xmin = top_->localPosition(0.);
 		        
-		        std::cout<<"CSC PointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
+		       // std::cout<<"CSC PointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
 			//std::cout<<"DT RPC Id: "<<rpcId<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
-			std::cout<<"DT PointExtrapolatedRPCFrameError: "<<LocalDTPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<std::endl;
-			std::cout<<"DT Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
-			std::cout<<"DT region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
+			
+			
+			typedef std::pair<RPCRecHitCollection::const_iterator, RPCRecHitCollection::const_iterator> rangeRecHits;
+			rangeRecHits recHitCollection = rpcRecHits->get(rpcId);
+			RPCRecHitCollection::const_iterator cscrecHit;	
+				
+				for(cscrecHit = recHitCollection.first; cscrecHit != recHitCollection.second ; cscrecHit++) {
+				//countRecHits++;
+				LocalPoint recHitPos=cscrecHit->localPosition();
+				LocalError recHitPosError=cscrecHit->localPositionError();
+				double LocalRecHit_x = recHitPos.x();
+				double LocalRecHit_x_error = recHitPosError.xx();
+				double LocalRecHit_y = recHitPos.y();
+				double LocalRecHit_y_error = recHitPosError.yy();
+				double LocalRecHit_xy_error = recHitPosError.xy();
+				
+				//double Local_diff_x = fabs(LocalRecHit_x - LocalCSCPoint_x );
+				//int region = rpcId.region();
+				//int ring = rpcId.ring();
+				//int station = rpcId.station();
+				//int layer = rpcId.layer();
+				//int sector = rpcId.sector();
+				
+				const RPCRoll* rollasociated = rpcGeom->roll(rpcId);
+				const TrapezoidalStripTopology* top_= dynamic_cast<const TrapezoidalStripTopology*> (&(rollasociated->topology()));
+				float stripw = top_->pitch();
+				//float cluSize = cscrecHit->clusterSize();
+				float error = stripw * stripw / sqrt(12);
+				const float stripp = rollasociated->strip(LocalPoint(PointExtrapolatedRPCFrame.x(),PointExtrapolatedRPCFrame.y(),0.));
+				LocalError RollError = rollasociated->localError(stripp);
+				
+				
+				 std::cout<<" RPC Related Local Points"<<" LocalRecHit_x: "<<LocalRecHit_x<<" LocalRecHit_x_error: "<<LocalRecHit_x_error<<" LocalRecHit_y: "<<LocalRecHit_y<<" LocalRecHit_y_error: "<<LocalRecHit_y_error<<" LocalRecHit_xy_error: "<<LocalRecHit_xy_error<<std::endl;
+			
+			std::cout<<"CSC PointExtrapolatedRPCFrame: "<<LocalCSCPoint_x<<" RecHitPos: "<<LocalRecHit_x<<std::endl;
+			//std::cout<<"CSC RPC Id: "<<rpcId<<" Cluster Size "<<cluSize<<" Strip Width "<<stripw<<" Error: "<<cluSize*stripw/sqrt(12) <<std::endl;
+			std::cout<<"CSC PointExtrapolatedRPCFrameError: "<<LocalCSCPoint_x_error<<" RecHitPos_Error: "<<LocalRecHit_x_error<<" Calculated error "<<error<<" Roll Error "<<RollError<<std::endl;
+			std::cout<<"CSC Local Difference: "<<fabs(PointExtrapolatedRPCFrame.x()-recHitPos.x())<<std::endl;
+			std::cout<<"CSC region  Strip Width: "<<stripw<<" RollError: "<<RollError<<" Error Calculated: "<<error<<std::endl;
+				
+				}
+					
+			
+		
 
 		
 		
 		
 		
 		}//CSC Points
-
-
-
-
-
-
-
-
 }//CSC If
 
 
 
-
-//********************	CSC Points	********************	 
-	
-			//const RectangularStripTopology* top_= dynamic_cast<const RectangularStripTopology*> (&(rollasociated->topology()));
-			//LocalPoint xmin = top_->localPosition(0.);
-			//LocalPoint xmax = top_->localPosition((float)rollasociated->nstrips());
-			//float stripw = top_->pitch();
-			//float res=PointExtrapolatedRPCFrame.x()- recHitPos.x();
-		//	cluSize = dtrecHit->clusterSize();
-			//bx=dtrecHit->BunchX(); 
-			//firststrip = dtrecHit->firstClusterStrip();  
-			//nstrips = top_->nstrips();
-		//	stripsection = stripw/3. ;  // for clustersize 1
-			//length = top_->stripLength(); 
-			
-			
-			
-		/*	std::cout<<" RPC ID "<<rpcId<<std::endl;
-			std::cout<<" Difference: "<<res<<" clus size "<<cluSize<<std::endl;
-			std::cout<<"DT(rechit) recHitPos: "<<recHitPos.x()<<" Extrapolated Pos: "<<PointExtrapolatedRPCFrame.x()<<" First Strip: "<<firststrip<<"  cluSize= "<<cluSize<<" bx "<<bx<<" Strip Width: "<<stripw<<" strip length: "<<length<<" nstrips: "<<nstrips<<" xmin: "<<xmin<<" xmax: "<<xmax<<std::endl;
-			std::cout<<"Count RecHits: "<<countRecHits<<std::endl;
-			*/
 				    
 	
 		    
